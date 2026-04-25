@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Puzzel — Geheime Code</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e0e;
+      --surface: #181818;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.18);
+      --text: #f0ece4;
+      --muted: rgba(240,236,228,0.45);
+      --accent: #c9a96e;
+      --accent-dim: rgba(201,169,110,0.15);
+      --win-bg: #0a2e14;
+      --win-accent: #3ddc6f;
+      --win-glow: rgba(61,220,111,0.18);
+      --lose-bg: #2a0808;
+      --lose-accent: #ff4d4d;
+      --lose-glow: rgba(255,77,77,0.18);
+      --wrong: #ff4d4d;
+      --correct: #3ddc6f;
+      --radius: 10px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      transition: background 0.6s ease;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(201,169,110,0.07) 0%, transparent 65%);
+      pointer-events: none;
+      transition: opacity 0.6s;
+    }
+
+    body.win-state { background: var(--win-bg); }
+    body.win-state::before { background: radial-gradient(ellipse at 50% 30%, var(--win-glow) 0%, transparent 65%); }
+    body.lose-state { background: var(--lose-bg); }
+    body.lose-state::before { background: radial-gradient(ellipse at 50% 30%, var(--lose-glow) 0%, transparent 65%); }
+
+    /* ─── SETUP PANEL ─── */
+    #setup-panel {
+      width: 100%;
+      max-width: 540px;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .setup-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .setup-header .eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .setup-header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    .field { margin-bottom: 0.85rem; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 5px;
+      font-weight: 400;
+    }
+
+    .field input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 0.5px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 14px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text);
+      transition: border-color 0.2s, background 0.2s;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .field input::placeholder { color: rgba(240,236,228,0.2); }
+
+    .row-inline { display: flex; gap: 10px; align-items: flex-end; }
+    .row-inline .field { flex: 1; margin-bottom: 0; }
+
+    .parts-count-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.25rem;
+    }
+
+    .parts-count-row label {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .parts-count-row input[type=number] {
+      width: 70px;
+      background: rgba(255,255,255,0.04);
+      border: 0.5px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 14px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .parts-count-row input[type=number]:focus { border-color: var(--accent); }
+
+    .btn-sm {
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: 7px;
+      border: 0.5px solid var(--border-hover);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-sm:hover { background: rgba(255,255,255,0.07); border-color: var(--border-hover); }
+
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: 'DM Sans', sans-serif;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--accent);
+      color: #0e0e0e;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.3px;
+    }
+
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .saved-badge {
+      font-size: 11px;
+      color: var(--correct);
+      font-family: 'DM Mono', monospace;
+      display: none;
+      margin-left: 10px;
+    }
+
+    /* ─── GAME PANEL ─── */
+    #game-panel {
+      width: 100%;
+      max-width: 560px;
+      text-align: center;
+      display: none;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .game-eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .game-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 34px;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+      line-height: 1.2;
+    }
+
+    .game-sub {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 2.5rem;
+    }
+
+    .code-inputs {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .part-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .part-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .part-input {
+      width: 88px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 6px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+
+    .part-input:focus {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .part-input.correct {
+      border-color: var(--correct);
+      background: rgba(61,220,111,0.08);
+      color: var(--correct);
+    }
+
+    .part-input.wrong {
+      border-color: var(--wrong);
+      background: rgba(255,77,77,0.08);
+      color: var(--wrong);
+    }
+
+    .sep {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      color: rgba(240,236,228,0.2);
+      margin-top: 22px;
+      user-select: none;
+    }
+
+    .hint-box {
+      background: rgba(255,165,0,0.07);
+      border: 0.5px solid rgba(255,165,0,0.3);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-size: 13px;
+      color: #ffb347;
+      text-align: left;
+      margin-bottom: 1.5rem;
+      line-height: 1.7;
+      display: none;
+    }
+
+    .attempts-counter {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 1.25rem;
+      letter-spacing: 1px;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 1.5rem;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      background: none;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover { color: var(--text); }
+
+    /* ─── WIN / LOSE SCREENS ─── */
+    .result-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 70vh;
+      width: 100%;
+      max-width: 500px;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .result-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 2rem;
+    }
+
+    #win-screen .result-icon {
+      background: rgba(61,220,111,0.12);
+      border: 0.5px solid rgba(61,220,111,0.3);
+      color: var(--win-accent);
+    }
+
+    #lose-screen .result-icon {
+      background: rgba(255,77,77,0.12);
+      border: 0.5px solid rgba(255,77,77,0.3);
+      color: var(--lose-accent);
+    }
+
+    .result-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 42px;
+      font-weight: 400;
+      margin-bottom: 1rem;
+      line-height: 1.1;
+    }
+
+    #win-screen .result-title { color: var(--win-accent); }
+    #lose-screen .result-title { color: var(--lose-accent); }
+
+    .result-sub {
+      font-size: 17px;
+      color: rgba(240,236,228,0.65);
+      max-width: 380px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+
+    .btn-outline {
+      padding: 12px 32px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'DM Sans', sans-serif;
+      border-radius: var(--radius);
+      cursor: pointer;
+      background: transparent;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #win-screen .btn-outline {
+      border: 1px solid rgba(61,220,111,0.5);
+      color: var(--win-accent);
+    }
+
+    #win-screen .btn-outline:hover { background: rgba(61,220,111,0.1); }
+
+    #lose-screen .btn-outline {
+      border: 1px solid rgba(255,77,77,0.5);
+      color: var(--lose-accent);
+    }
+
+    #lose-screen .btn-outline:hover { background: rgba(255,77,77,0.1); }
+
+    .btn-outline:active { transform: scale(0.97); }
+
+    /* ─── ANIM ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 480px) {
+      .part-input { width: 72px; font-size: 15px; padding: 10px 4px; }
+      .game-title { font-size: 26px; }
+      .result-title { font-size: 32px; }
+      .code-inputs { gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ SETUP PANEL ══ -->
+  <div id="setup-panel">
+    <div class="setup-header">
+      <div class="eyebrow">Beheerder</div>
+      <h1>Puzzel Configuratie</h1>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Geheime code</div>
+      <div class="parts-count-row">
+        <label>Aantal delen:</label>
+        <input type="number" id="num-parts" min="2" max="8" value="4">
+        <button class="btn-sm" onclick="rebuildSecretFields()">Bijwerken</button>
+      </div>
+      <div id="secret-fields">
+        <div class="field"><label>Deel 1</label><input id="s0" placeholder="bv. WOLF"></div>
+        <div class="field"><label>Deel 2</label><input id="s1" placeholder="bv. 317"></div>
+        <div class="field"><label>Deel 3</label><input id="s2" placeholder="bv. DELTA"></div>
+        <div class="field"><label>Deel 4</label><input id="s3" placeholder="bv. 99"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Twilio SMS-melding</div>
+      <div class="field"><label>Account SID</label><input id="twilio-sid" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></div>
+      <div class="field"><label>Auth Token</label><input id="twilio-token" type="password" placeholder="••••••••••••••••••••••••••••••••"></div>
+      <div class="row-inline">
+        <div class="field"><label>Van (Twilio nummer)</label><input id="twilio-from" placeholder="+15551234567"></div>
+        <div class="field"><label>Naar (jouw nummer)</label><input id="twilio-to" placeholder="+32499000000"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="startGame()">
+      Puzzelpagina openen
+    </button>
+  </div>
+
+  <!-- ══ GAME PANEL ══ -->
+  <div id="game-panel">
+    <div class="game-eyebrow">Geheime code</div>
+    <h1 class="game-title">Voer de code in</h1>
+    <p class="game-sub">Combineer alle stukken die je gevonden hebt.</p>
+
+    <div class="code-inputs" id="code-inputs"></div>
+
+    <div class="hint-box" id="hint-box"></div>
+
+    <button class="btn-primary" onclick="checkCode()" style="max-width:340px;margin:0 auto;">
+      Controleren
+    </button>
+
+    <div class="attempts-counter" id="attempts-txt"></div>
+    <button class="back-link" onclick="backToSetup()">← Terug naar instellingen</button>
+  </div>
+
+  <!-- ══ WIN SCREEN ══ -->
+  <div class="result-screen" id="win-screen">
+    <div class="result-icon">★</div>
+    <div class="result-title">Gefeliciteerd!</div>
+    <p class="result-sub">Uitstekend werk! Je hebt de puzzel opgelost en de geheime code gekraakt. Je bent een echte detective!</p>
+    <button class="btn-outline" onclick="resetGame()">Opnieuw spelen</button>
+  </div>
+
+  <!-- ══ LOSE SCREEN ══ -->
+  <div class="result-screen" id="lose-screen">
+    <div class="result-icon">✕</div>
+    <div class="result-title">Verkeerde code</div>
+    <p class="result-sub" id="lose-sub">Die code klopt niet. Controleer je aanwijzingen en probeer het opnieuw!</p>
+    <button class="btn-outline" onclick="tryAgain()">Probeer opnieuw</button>
+  </div>
+
+  <script>
+    // ── Config state ──
+    let cfg = { parts: [], sid: '', token: '', from: '', to: '' };
+    let attempts = 0;
+    const MAX_ATTEMPTS = 3;
+
+    // ── Rebuild secret input fields ──
+    function rebuildSecretFields() {
+      const n = parseInt(document.getElementById('num-parts').value) || 4;
+      const container = document.getElementById('secret-fields');
+      const existing = container.querySelectorAll('input');
+      const vals = Array.from(existing).map(i => i.value);
+      container.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        const d = document.createElement('div');
+        d.className = 'field';
+        d.innerHTML = `<label>Deel ${i + 1}</label><input id="s${i}" placeholder="bv. deel ${i + 1}">`;
+        container.appendChild(d);
+        if (vals[i]) document.getElementById('s' + i).value = vals[i];
+      }
+    }
+
+    // ── Build game code input row ──
+    function buildGameInputs() {
+      const row = document.getElementById('code-inputs');
+      row.innerHTML = '';
+      cfg.parts.forEach((_, i) => {
+        if (i > 0) {
+          const sep = document.createElement('span');
+          sep.className = 'sep';
+          sep.textContent = '—';
+          row.appendChild(sep);
+        }
+        const group = document.createElement('div');
+        group.className = 'part-group';
+        group.innerHTML = `
+          <span class="part-num">Deel ${i + 1}</span>
+          <input class="part-input" id="p${i}" maxlength="12" autocomplete="off" spellcheck="false"
+            onkeydown="handleKey(event, ${i})">
+        `;
+        row.appendChild(group);
+      });
+    }
+
+    function handleKey(e, i) {
+      if (e.key === 'Enter') checkCode();
+      if (e.key === 'ArrowRight' || e.key === 'Tab') {
+        e.preventDefault();
+        const next = document.getElementById('p' + (i + 1));
+        if (next) next.focus();
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const prev = document.getElementById('p' + (i - 1));
+        if (prev) prev.focus();
+      }
+    }
+
+    // ── Start game ──
+    function startGame() {
+      const n = parseInt(document.getElementById('num-parts').value) || 4;
+      cfg.parts = [];
+      for (let i = 0; i < n; i++) {
+        const el = document.getElementById('s' + i);
+        cfg.parts.push(el ? el.value.trim().toUpperCase() : '');
+      }
+      cfg.sid   = document.getElementById('twilio-sid').value.trim();
+      cfg.token = document.getElementById('twilio-token').value.trim();
+      cfg.from  = document.getElementById('twilio-from').value.trim();
+      cfg.to    = document.getElementById('twilio-to').value.trim();
+
+      attempts = 0;
+      showPanel('game');
+      buildGameInputs();
+      document.getElementById('hint-box').style.display = 'none';
+      document.getElementById('attempts-txt').textContent = '';
+      document.body.className = '';
+      const first = document.getElementById('p0');
+      if (first) setTimeout(() => first.focus(), 100);
+    }
+
+    // ── Check code ──
+    function checkCode() {
+      const inputs = cfg.parts.map((_, i) => {
+        const el = document.getElementById('p' + i);
+        return el ? el.value.trim().toUpperCase() : '';
+      });
+
+      const allCorrect = inputs.every((v, i) => v === cfg.parts[i]);
+
+      if (allCorrect) {
+        sendSMS();
+        showPanel('win');
+        document.body.className = 'win-state';
+        return;
+      }
+
+      attempts++;
+      const remaining = MAX_ATTEMPTS - attempts;
+
+      if (attempts >= MAX_ATTEMPTS) {
+        markInputs(inputs);
+        showHintBox(inputs);
+      }
+
+      const loseMsg = remaining > 0
+        ? `Die code klopt niet. Je hebt nog ${remaining} poging${remaining === 1 ? '' : 'en'}. Controleer je aanwijzingen!`
+        : 'Die code klopt niet. Bekijk de aanwijzingen en probeer het opnieuw.';
+      document.getElementById('lose-sub').textContent = loseMsg;
+      showPanel('lose');
+      document.body.className = 'lose-state';
+    }
+
+    function markInputs(inputs) {
+      cfg.parts.forEach((correct, i) => {
+        const el = document.getElementById('p' + i);
+        if (!el) return;
+        el.classList.remove('correct', 'wrong');
+        el.classList.add(inputs[i] === correct ? 'correct' : 'wrong');
+      });
+    }
+
+    function showHintBox(inputs) {
+      const wrong = cfg.parts
+        .map((correct, i) => inputs[i] !== correct ? `Deel ${i + 1}` : null)
+        .filter(Boolean);
+      const hint = document.getElementById('hint-box');
+      hint.style.display = 'block';
+      hint.innerHTML = `<strong>Aanwijzing na ${MAX_ATTEMPTS} pogingen:</strong> ${wrong.join(', ')} ${wrong.length === 1 ? 'klopt' : 'kloppen'} niet. Ga terug naar de puzzel en zoek die stukken opnieuw.`;
+    }
+
+    // ── Try again ──
+    function tryAgain() {
+      showPanel('game');
+      document.body.className = '';
+      updateAttemptsText();
+      if (attempts >= MAX_ATTEMPTS) {
+        const inputs = cfg.parts.map((_, i) => {
+          const el = document.getElementById('p' + i);
+          return el ? el.value.trim().toUpperCase() : '';
+        });
+        markInputs(inputs);
+        showHintBox(inputs);
+      }
+      const first = document.getElementById('p0');
+      if (first) setTimeout(() => first.focus(), 100);
+    }
+
+    function updateAttemptsText() {
+      const remaining = MAX_ATTEMPTS - attempts;
+      const el = document.getElementById('attempts-txt');
+      if (attempts === 0) { el.textContent = ''; return; }
+      el.textContent = remaining > 0
+        ? `Poging ${attempts} van ${MAX_ATTEMPTS}`
+        : `Maximaal aantal pogingen bereikt — bekijk de aanwijzingen hierboven`;
+    }
+
+    // ── Reset ──
+    function resetGame() {
+      attempts = 0;
+      buildGameInputs();
+      document.getElementById('hint-box').style.display = 'none';
+      document.getElementById('attempts-txt').textContent = '';
+      showPanel('game');
+      document.body.className = '';
+      const first = document.getElementById('p0');
+      if (first) setTimeout(() => first.focus(), 100);
+    }
+
+    function backToSetup() {
+      showPanel('setup');
+      document.body.className = '';
+    }
+
+    // ── Panel switching ──
+    function showPanel(name) {
+      document.getElementById('setup-panel').style.display = 'none';
+      document.getElementById('game-panel').style.display   = 'none';
+      document.getElementById('win-screen').style.display   = 'none';
+      document.getElementById('lose-screen').style.display  = 'none';
+
+      if (name === 'setup') {
+        document.getElementById('setup-panel').style.display = 'block';
+      } else if (name === 'game') {
+        document.getElementById('game-panel').style.display = 'block';
+      } else if (name === 'win') {
+        document.getElementById('win-screen').style.display = 'flex';
+      } else if (name === 'lose') {
+        document.getElementById('lose-screen').style.display = 'flex';
+      }
+    }
+
+    // ── Twilio SMS ──
+    async function sendSMS() {
+      if (!cfg.sid || !cfg.token || !cfg.from || !cfg.to) return;
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${cfg.sid}/Messages.json`;
+      const body = new URLSearchParams({
+        To: cfg.to,
+        From: cfg.from,
+        Body: '🏆 Iemand heeft de puzzel opgelost en de geheime code correct ingevoerd!'
+      });
+      try {
+        await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + btoa(cfg.sid + ':' + cfg.token),
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: body.toString()
+        });
+      } catch (e) {
+        console.warn('SMS kon niet verstuurd worden:', e);
+      }
+    }
+  </script>
+</body>
+</html>
